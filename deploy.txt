@@ -1,0 +1,259 @@
+sudo -u postgres psql
+CREATE DATABASE test_tripapi_db1;
+CREATE USER test_tripapi_user1 WITH PASSWORD 'test';
+ALTER ROLE test_tripapi_user1 SET client_encoding TO 'utf8';
+ALTER ROLE test_tripapi_user1 SET default_transaction_isolation TO 'read committed';
+ALTER ROLE test_tripapi_user1 SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE test_tripapi_db1 TO test_tripapi_user1;
+\q
+
+=======================================
+
+PRODUCTION
+
+======================================
+
+sudo -u postgres psql
+CREATE DATABASE trip_db;
+CREATE USER admin WITH PASSWORD 'test';
+ALTER ROLE admin SET client_encoding TO 'utf8';
+ALTER ROLE admin SET default_transaction_isolation TO 'read committed';
+ALTER ROLE admin SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE trip_db TO admin;
+
+\c trip_db
+CREATE EXTENSION pg_trgm;
+
+ALTER USER admin CREATEDB;
+\q
+
+==============================================
+
+sudo journalctl -u staging --since "10 minutes ago" -f
+
+==================================
+Setting up Staging Enviroments
+==================================
+
+1. Git clone and setup project
+
+2. Setup gunicorn
+
+    sudo nano /etc/systemd/system/staging.socket
+
+[Unit]
+Description=Frontend Staging Gunicorn Socket
+
+[Socket]
+ListenStream=/run/fstaging.sock
+
+[Install]
+WantedBy=sockets.target
+
+
+    sudo nano /etc/systemd/system/fstaging.service
+
+[Unit]
+Description=Frontend Staging Gunicorn Service
+Requires=fstaging.socket
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/staging/web/project
+ExecStart=/home/ubuntu/staging/web/venv/bin/python3 \
+          /home/ubuntu/staging/web/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/fstaging.sock \
+          trip.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+    sudo systemctl start fstaging.socket
+    sudo systemctl enable fstaging.socket
+
+    sudo systemctl start fstaging
+    sudo systemctl enable fstaging
+
+    sudo systemctl status fstaging
+
+    sudo systemctl status fstaging.socket
+
+    sudo systemctl daemon-reload
+
+3. Setup Nginx
+
+    sudo nano /etc/nginx/sites-available/staging-web
+
+server {
+    listen 80;
+    server_name staging.project.com.ng;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/ubuntu/staging/web/project;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/fstaging.sock;
+    }
+}
+
+ln -s /etc/nginx/sites-available/staging-web /etc/nginx/sites-enabled
+
+===================================================================
+
+Setting up Production Enviroments
+
+===================================================================
+
+1. Git clone and setup project
+
+2. Setup gunicorn
+
+*** API ***
+
+- live.api.socket
+
+sudo nano /etc/systemd/system/live.api.socket
+
+[Unit]
+Description=Production API Gunicorn Socket
+
+[Socket]
+ListenStream=/run/live.api.sock
+
+[Install]
+WantedBy=sockets.target
+
+
+- live.api.service
+
+sudo nano /etc/systemd/system/live.api.service
+
+[Unit]
+Description=Production API Gunicorn Service
+Requires=live.api.socket
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/production/api/tripapi
+ExecStart=/home/ubuntu/production/api/venv/bin/python \
+          /home/ubuntu/production/api/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/live.api.sock \
+          tripapi.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl start live.api.socket
+sudo systemctl enable live.api.socket
+sudo systemctl start live.api
+sudo systemctl enable live.api
+sudo systemctl status live.api
+
+
+** WEB **
+
+- live.web.socket
+
+sudo nano /etc/systemd/system/live.web.socket
+
+[Unit]
+Description=Production Web Gunicorn Socket
+
+[Socket]
+ListenStream=/run/live.web.sock
+
+[Install]
+WantedBy=sockets.target
+
+
+- live.web.service
+
+sudo nano /etc/systemd/system/live.web.service
+
+[Unit]
+Description=Production Web Gunicorn Service
+Requires=live.web.socket
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/production/web/project
+ExecStart=/home/ubuntu/production/web/venv/bin/python \
+          /home/ubuntu/production/web/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/live.web.sock \
+          trip.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl start live.web.socket
+sudo systemctl enable live.web.socket
+sudo systemctl start live.web
+sudo systemctl enable live.web
+sudo systemctl status live.web
+
+sudo systemctl daemon-reload
+
+3. Setup Nginx
+
+** API **
+
+sudo nano /etc/nginx/sites-available/live.api
+
+server {
+    listen 80;
+    server_name api.project.com.ng;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/ubuntu/production/web/project;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/live.api.sock;
+    }
+}
+
+sudo ln -s /etc/nginx/sites-available/live.api /etc/nginx/sites-enabled
+
+
+** WEB **
+
+sudo nano /etc/nginx/sites-available/live.web
+
+server {
+    listen 80;
+    server_name project.com.ng;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/ubuntu/production/web/project;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/live.web.sock;
+    }
+}
+
+sudo ln -s /etc/nginx/sites-available/live.web /etc/nginx/sites-enabled
+
+
