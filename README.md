@@ -8,8 +8,8 @@
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/devvspaces/django-restframework-template/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/devvspaces/django-restframework-template/pulls)
+[![GitHub Issues](https://img.shields.io/github/issues/devvspaces/django-restframework-template.svg)](https://github.com/devvspaces/django-restframework-template/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/devvspaces/django-restframework-template.svg)](https://github.com/devvspaces/django-restframework-template/pulls)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
