@@ -47,6 +47,7 @@ This is a Django Rest Framework project. It is a template for building REST APIs
 - Users Detail API
 - API Keys Integration: Using Secret keys and Public keys
 - Admin and API key DRF Permissions
+- Github Actions for CI/CD testing
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
